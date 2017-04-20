@@ -1,0 +1,55 @@
+#use to retrive information from dongle
+# call with ./huawei <IP> <API-path>
+
+#!/bin/sh
+
+#globals for token, cookie, IP-Address, and api request 
+token=''
+sessionID=''
+IP=$1
+path=$2
+
+#return XML-value: for a variable $source, containing valid XML,
+#the return will be 'val' iff <tag>val</tag>
+#
+#usage: val=$(extractVal "$source", "tag")
+extractVal()
+{
+  regExp='s#.*<'$2'>\(.*\)</'$2'>.*#\1#p'
+  echo $(echo "${1}" | sed -n -e "$regExp")
+}
+
+#first thing ever to do, get sessionID and cookie,
+#save them in global var
+getTokenAndSessionID()
+{
+  payload=$(curl -s -H "Content-Type: text/xml" -X GET http://$IP/api/webserver/SesTokInfo)
+  sessionID=$(extractVal "$payload" "SesInfo")
+  token=$(extractVal "$payload" "TokInfo")
+}
+
+#to send a query to
+sendQuery()
+{
+  echo "$(curl -s -H "Content-Type: application/xml" -H "__RequestVerificationToken: $token" -H "Cookie: $sessionID" -X GET http://${IP}${1})"
+}
+
+resetTraffic()
+{
+  echo "$(curl -s -H "Content-Type: application/xml" -H "__RequestVerificationToken: $token" -H "Cookie: $sessionID" -X POST -d "<?xml version='1.0' encoding='UTF-8' ?><request><ClearTraffic>1</ClearTraffic></request>" http://$IP/api/monitoring/clear-traffic)"
+}
+
+
+#entry point of main program
+  getTokenAndSessionID
+
+  echo "sent $2 to $IP"
+  echo ""
+  sendQuery $path
+
+
+#  resetTraffic
+
+
+
+
